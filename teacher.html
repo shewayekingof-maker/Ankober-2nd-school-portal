@@ -3,23 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>የመምህር ፖርታል - የወላጆች ሩም</title>
+    <title>የመምህር ፖርታል - የተማሪ መቆጣጠሪያ</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
         body { background: #f0f2f5; padding: 15px; }
-        .container { max-width: 600px; margin: 0 auto; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        h2 { color: #28a745; text-align: center; margin-bottom: 15px; }
-        .room-select { margin-bottom: 15px; }
-        .room-select select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; }
-        .chat-box { height: 320px; border: 1px solid #ddd; overflow-y: auto; padding: 10px; background: #fafafa; border-radius: 5px; display: flex; flex-direction: column; gap: 8px; }
+        .container { max-width: 650px; margin: 0 auto; }
+        .header-card { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 15px; text-align: center; }
+        h2 { color: #28a745; margin-bottom: 10px; }
+        
+        .nav-container { text-align: center; margin-bottom: 10px; }
+        .nav-link { display: inline-block; padding: 6px 14px; background: #e4e6eb; color: #1a73e8; font-weight: bold; text-decoration: none; border-radius: 4px; font-size: 13px; }
+        
+        .card { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 15px; }
+        .card h3 { color: #28a745; margin-bottom: 12px; font-size: 16px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+        
+        .room-select select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; font-weight: bold; background: #fff8e1; }
+        
+        .form-row { display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+        .form-group { flex: 1; min-width: 120px; }
+        .form-group label { display: block; font-size: 12px; margin-bottom: 4px; color: #555; }
+        .form-group input, .form-group select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; }
+        
+        .btn-action { width: 100%; padding: 9px; background: #28a745; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; margin-top: 5px; }
+        .btn-action:hover { background: #218838; }
+
+        .chat-box { height: 250px; border: 1px solid #ddd; overflow-y: auto; padding: 10px; background: #fafafa; border-radius: 5px; display: flex; flex-direction: column; gap: 8px; }
         .msg { padding: 8px 12px; border-radius: 12px; max-width: 80%; font-size: 13px; word-break: break-word; }
         .teacher-msg { background: #28a745; color: white; align-self: flex-end; }
         .parent-msg { background: #e4e6eb; color: #333; align-self: flex-start; }
         .send-area { display: flex; gap: 8px; margin-top: 10px; }
-        .send-area input { flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 4px; }
-        .send-area button { padding: 10px 15px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        .send-area input { flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; }
+        .send-area button { padding: 10px 15px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
     </style>
 
+    <!-- Firebase SDK (Modular Version) -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getDatabase, ref, push, onValue, onChildAdded, off } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
@@ -39,18 +56,39 @@
         let activeRoomRef = null;
         let selectedRoomId = "";
 
+        // የድምፅ ማሳወቂያ ማጫወቻ
+        function playNotificationSound() {
+            try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(587.33, audioCtx.currentTime);
+                gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+
+                oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+
+                oscillator.start();
+                oscillator.stop(audioCtx.currentTime + 0.15);
+            } catch (e) {
+                console.log("Audio play error:", e);
+            }
+        }
+
         // ሁሉንም የወላጅ ሩሞች መጫን
         const rootRef = ref(database, 'messages');
         const roomSelect = document.getElementById('roomSelect');
 
         onValue(rootRef, (snapshot) => {
             const data = snapshot.val();
-            roomSelect.innerHTML = '<option value="">-- ወላጅ/ሩም ይምረጡ --</option>';
+            roomSelect.innerHTML = '<option value="">-- ወላጅ/ተማሪ ይምረጡ --</option>';
             if (data) {
                 Object.keys(data).forEach(roomId => {
                     const opt = document.createElement('option');
                     opt.value = roomId;
-                    opt.innerText = "የወላጅ ሩም: " + roomId.replace('parent_', '');
+                    opt.innerText = "የተማሪ/ወላጅ ID: " + roomId.replace('parent_', '');
                     roomSelect.appendChild(opt);
                 });
             }
@@ -69,6 +107,11 @@
             activeRoomRef = ref(database, 'messages/' + selectedRoomId);
             onChildAdded(activeRoomRef, (snapshot) => {
                 const msgData = snapshot.val();
+
+                if (msgData.sender === 'ወላጅ') {
+                    playNotificationSound();
+                }
+
                 const msgDiv = document.createElement('div');
                 msgDiv.className = msgData.sender === 'መምህር' ? 'msg teacher-msg' : 'msg parent-msg';
                 msgDiv.innerText = msgData.sender + ': ' + msgData.message;
@@ -77,7 +120,61 @@
             });
         };
 
-        // መምህሩ ምላሽ ሲልክ
+        // 1. የተማሪ ውጤት መዝግብ
+        window.saveGrade = function() {
+            if (!selectedRoomId) {
+                alert('እባክዎን ቅድሚያ ተማሪ/ወላጅ ይምረጡ!');
+                return;
+            }
+            const subject = document.getElementById('gradeSubject').value.trim();
+            const mid = document.getElementById('gradeMid').value.trim();
+            const final = document.getElementById('gradeFinal').value.trim();
+
+            if (!subject || mid === '' || final === '') {
+                alert('እባክዎን የትምህርቱን ስም፣ Mid እና Final ውጤት ይሙሉ!');
+                return;
+            }
+
+            const gradesRef = ref(database, `students/${selectedRoomId}/grades`);
+            push(gradesRef, {
+                subject: subject,
+                mid: Number(mid),
+                final: Number(final),
+                timestamp: Date.now()
+            });
+
+            alert('ውጤቱ በስኬት ተመዝግቧል!');
+            document.getElementById('gradeSubject').value = '';
+            document.getElementById('gradeMid').value = '';
+            document.getElementById('gradeFinal').value = '';
+        };
+
+        // 2. የጥሪ መዝገብ (Attendance) መዝግብ
+        window.saveAttendance = function() {
+            if (!selectedRoomId) {
+                alert('እባክዎን ቅድሚያ ተማሪ/ወላጅ ይምረጡ!');
+                return;
+            }
+            const day = document.getElementById('attDay').value.trim();
+            const status = document.getElementById('attStatus').value;
+
+            if (!day) {
+                alert('እባክዎን ቀኑን ያስገቡ!');
+                return;
+            }
+
+            const attRef = ref(database, `students/${selectedRoomId}/attendance`);
+            push(attRef, {
+                day: day,
+                status: status,
+                timestamp: Date.now()
+            });
+
+            alert('የጥሪ መዝገቡ በስኬት ተመዝግቧል!');
+            document.getElementById('attDay').value = '';
+        };
+
+        // 3. መምህሩ ምላሽ ሲልክ
         window.sendTeacherReply = function() {
             const replyInput = document.getElementById('replyInput');
             const text = replyInput.value.trim();
@@ -95,6 +192,7 @@
                 timestamp: Date.now()
             });
 
+            playNotificationSound();
             replyInput.value = '';
         };
     </script>
@@ -102,19 +200,69 @@
 <body>
 
     <div class="container">
-        <h2>የመምህሩ ዳሽቦርድ (የግል ምላሽ መስጫ)</h2>
+        <div class="header-card">
+            <h2>የመምህሩ ዳሽቦርድ (የቁጥጥር ገጽ)</h2>
+            <div class="nav-container">
+                <a href="index.html" class="nav-link">👈 ወደ ወላጅ/ተማሪ ፖርታል ተመለስ</a>
+            </div>
+        </div>
         
-        <div class="room-select">
+        <!-- 1. ተማሪ/ወላጅ መምረጫ -->
+        <div class="card room-select">
+            <h3>1. የሚሰሩለትን ተማሪ ይምረጡ</h3>
             <select id="roomSelect" onchange="loadRoomChat()">
-                <option value="">-- ወላጅ/ሩም ይምረጡ --</option>
+                <option value="">-- ወላጅ/ተማሪ ይምረጡ --</option>
             </select>
         </div>
 
-        <div class="chat-box" id="chatBox"></div>
+        <!-- 2. ውጤት መመዝገቢያ -->
+        <div class="card">
+            <h3>2. የተማሪ ውጤት መመዝገቢያ</h3>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>ትምህርት</label>
+                    <input type="text" id="gradeSubject" placeholder="ምሳሌ፡ ሂሳብ">
+                </div>
+                <div class="form-group">
+                    <label>Mid (30%)</label>
+                    <input type="number" id="gradeMid" placeholder="0-30">
+                </div>
+                <div class="form-group">
+                    <label>Final (70%)</label>
+                    <input type="number" id="gradeFinal" placeholder="0-70">
+                </div>
+            </div>
+            <button class="btn-action" onclick="saveGrade()">ውጤት መዝግብ</button>
+        </div>
 
-        <div class="send-area">
-            <input type="text" id="replyInput" placeholder="ምላሽ ይጻፉ...">
-            <button onclick="sendTeacherReply()">Reply</button>
+        <!-- 3. የጥሪ መዝገብ መመዝገቢያ -->
+        <div class="card">
+            <h3>3. የጥሪ መዝገብ (Attendance) መመዝገቢያ</h3>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>ቀን</label>
+                    <input type="text" id="attDay" placeholder="ምሳሌ፡ ሰኞ (Monday)">
+                </div>
+                <div class="form-group">
+                    <label>ሁኔታ</label>
+                    <select id="attStatus">
+                        <option value="ተገኝቷል">ተገኝቷል</option>
+                        <option value="ቀርቷል">ቀርቷል</option>
+                        <option value="ዘግይቷል">ዘግይቷል</option>
+                    </select>
+                </div>
+            </div>
+            <button class="btn-action" onclick="saveAttendance()">የጥሪ መዝገብ መዝግብ</button>
+        </div>
+
+        <!-- 4. የቀጥታ ውይይት -->
+        <div class="card">
+            <h3>4. ከወላጅ ጋር የቀጥታ ውይይት</h3>
+            <div class="chat-box" id="chatBox"></div>
+            <div class="send-area">
+                <input type="text" id="replyInput" placeholder="ምላሽ ይጻፉ...">
+                <button onclick="sendTeacherReply()">ላክ</button>
+            </div>
         </div>
     </div>
 
