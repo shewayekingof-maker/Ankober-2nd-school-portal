@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="am">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>የመምህር ፖርታል - የወላጆች ሩም</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
+        body { background: #f0f2f5; padding: 15px; }
+        .container { max-width: 600px; margin: 0 auto; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        h2 { color: #28a745; text-align: center; margin-bottom: 15px; }
+        .room-select { margin-bottom: 15px; }
+        .room-select select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; }
+        .chat-box { height: 320px; border: 1px solid #ddd; overflow-y: auto; padding: 10px; background: #fafafa; border-radius: 5px; display: flex; flex-direction: column; gap: 8px; }
+        .msg { padding: 8px 12px; border-radius: 12px; max-width: 80%; font-size: 13px; word-break: break-word; }
+        .teacher-msg { background: #28a745; color: white; align-self: flex-end; }
+        .parent-msg { background: #e4e6eb; color: #333; align-self: flex-start; }
+        .send-area { display: flex; gap: 8px; margin-top: 10px; }
+        .send-area input { flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 4px; }
+        .send-area button { padding: 10px 15px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; }
+    </style>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getDatabase, ref, push, onValue, onChildAdded, off } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyArxZAw4MyFgjyw4dLasuMS4jH",
+            authDomain: "ankober-2nd-school-portal.firebaseapp.com",
+            databaseURL: "https://ankober-2nd-school-portal-default-rtdb.firebaseio.com",
+            projectId: "ankober-2nd-school-portal",
+            storageBucket: "ankober-2nd-school-portal.firebasestorage.app",
+            messagingSenderId: "866670029033",
+            appId: "1:866670029033:web:f3ec6524728ca"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
+        let activeRoomRef = null;
+        let selectedRoomId = "";
+
+        // ሁሉንም የወላጅ ሩሞች መጫን
+        const rootRef = ref(database, 'messages');
+        const roomSelect = document.getElementById('roomSelect');
+
+        onValue(rootRef, (snapshot) => {
+            const data = snapshot.val();
+            roomSelect.innerHTML = '<option value="">-- ወላጅ/ሩም ይምረጡ --</option>';
+            if (data) {
+                Object.keys(data).forEach(roomId => {
+                    const opt = document.createElement('option');
+                    opt.value = roomId;
+                    opt.innerText = "የወላጅ ሩም: " + roomId.replace('parent_', '');
+                    roomSelect.appendChild(opt);
+                });
+            }
+        });
+
+        // የተመረጠውን ሩም ውይይት ማሳየት
+        window.loadRoomChat = function() {
+            selectedRoomId = roomSelect.value;
+            const chatBox = document.getElementById('chatBox');
+            chatBox.innerHTML = '';
+
+            if (activeRoomRef) off(activeRoomRef);
+
+            if (!selectedRoomId) return;
+
+            activeRoomRef = ref(database, 'messages/' + selectedRoomId);
+            onChildAdded(activeRoomRef, (snapshot) => {
+                const msgData = snapshot.val();
+                const msgDiv = document.createElement('div');
+                msgDiv.className = msgData.sender === 'መምህር' ? 'msg teacher-msg' : 'msg parent-msg';
+                msgDiv.innerText = msgData.sender + ': ' + msgData.message;
+                chatBox.appendChild(msgDiv);
+                chatBox.scrollTop = chatBox.scrollHeight;
+            });
+        };
+
+        // መምህሩ ምላሽ ሲልክ
+        window.sendTeacherReply = function() {
+            const replyInput = document.getElementById('replyInput');
+            const text = replyInput.value.trim();
+
+            if (!selectedRoomId) {
+                alert('እባክዎን ቅድሚያ የሚመልሱለትን ወላጅ ይምረጡ!');
+                return;
+            }
+            if (!text) return;
+
+            const roomRef = ref(database, 'messages/' + selectedRoomId);
+            push(roomRef, {
+                sender: 'መምህር',
+                message: text,
+                timestamp: Date.now()
+            });
+
+            replyInput.value = '';
+        };
+    </script>
+</head>
+<body>
+
+    <div class="container">
+        <h2>የመምህሩ ዳሽቦርድ (የግል ምላሽ መስጫ)</h2>
+        
+        <div class="room-select">
+            <select id="roomSelect" onchange="loadRoomChat()">
+                <option value="">-- ወላጅ/ሩም ይምረጡ --</option>
+            </select>
+        </div>
+
+        <div class="chat-box" id="chatBox"></div>
+
+        <div class="send-area">
+            <input type="text" id="replyInput" placeholder="ምላሽ ይጻፉ...">
+            <button onclick="sendTeacherReply()">Reply</button>
+        </div>
+    </div>
+
+</body>
+</html>
