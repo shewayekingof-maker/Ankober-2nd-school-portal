@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="am">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ትምህርት ቤት ፖርታል</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
+        body { background-color: #f0f2f5; padding: 12px; }
+        .header { background: #1a73e8; color: white; padding: 15px; border-radius: 8px; text-align: center; margin-bottom: 15px; }
+        .card { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 15px; }
+        .card h3 { color: #1a73e8; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px; font-size: 16px; }
+        .table-container { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; margin-top: 5px; font-size: 13px; }
+        table th, table td { border: 1px solid #ddd; padding: 7px; text-align: left; }
+        table th { background-color: #f8f9fa; }
+        .chat-area { height: 200px; border: 1px solid #ddd; overflow-y: scroll; padding: 10px; border-radius: 5px; background: #fafafa; display: flex; flex-direction: column; gap: 8px; }
+        .msg { padding: 8px 12px; border-radius: 12px; max-width: 85%; font-size: 13px; word-break: break-word; }
+        .teacher { background: #e4e6eb; align-self: flex-start; }
+        .parent { background: #1a73e8; color: white; align-self: flex-end; }
+        .chat-input { display: flex; gap: 8px; margin-top: 10px; }
+        .chat-input input { flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 13px; }
+        .chat-input button { padding: 10px 15px; background: #28a745; color: white; border: none; border-radius: 5px; font-weight: bold; }
+    </style>
+
+    <!-- Firebase SDK (Modular Version) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getDatabase, ref, push, onChildAdded } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+        // 1. የራስህን Firebase Config መረጃ እዚህ ቦታ ላይ ተካ
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT.firebaseapp.com",
+            databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT.appspot.com",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+
+        // Firebase ማስነሳት
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
+        const chatRef = ref(database, 'messages');
+
+        // መልእክት ወደ Firebase መላክ
+        window.sendMsg = function() {
+            const input = document.getElementById('msgInput');
+            const text = input.value.trim();
+            if (text !== '') {
+                push(chatRef, {
+                    sender: 'ወላጅ',
+                    message: text,
+                    timestamp: Date.now()
+                });
+                input.value = '';
+            }
+        };
+
+        // አዲስ መልእክት ከFirebase ሲመጣ በስክሪኑ ላይ ማሳየት
+        const chatArea = document.getElementById('chatArea');
+        onChildAdded(chatRef, (snapshot) => {
+            const data = snapshot.val();
+            const newMsg = document.createElement('div');
+            newMsg.className = data.sender === 'ወላጅ' ? 'msg parent' : 'msg teacher';
+            newMsg.innerText = data.sender + ': ' + data.message;
+            chatArea.appendChild(newMsg);
+            chatArea.scrollTop = chatArea.scrollHeight;
+        });
+    </script>
+</head>
+<body>
+
+    <div class="header">
+        <h2>የትምህርት ቤት ፖርታል</h2>
+        <p>የተማሪ ውጤት እና የቀጥታ ማወያያ</p>
+    </div>
+
+    <!-- 11 ትምህርቶች -->
+    <div class="card">
+        <h3>የተማሪ ውጤት (Grades)</h3>
+        <div class="table-container">
+            <table>
+                <tr><th>ትምህርት</th><th>Mid (30%)</th><th>Final (70%)</th><th>ድምር</th></tr>
+                <tr><td>ሂሳብ (Mathematics)</td><td>28</td><td>60</td><td>88</td></tr>
+                <tr><td>እንግሊዝኛ (English)</td><td>25</td><td>58</td><td>83</td></tr>
+                <tr><td>ኬሚስትሪ (Chemistry)</td><td>26</td><td>55</td><td>81</td></tr>
+                <tr><td>ባዮሎጂ (Biology)</td><td>29</td><td>62</td><td>91</td></tr>
+                <tr><td>ፊዚክስ (Physics)</td><td>24</td><td>52</td><td>76</td></tr>
+                <tr><td>አይቲ (IT)</td><td>30</td><td>65</td><td>95</td></tr>
+                <tr><td>ኢኮኖሚክስ (Economics)</td><td>27</td><td>57</td><td>84</td></tr>
+                <tr><td>ጂኦግራፊ (Geography)</td><td>23</td><td>54</td><td>77</td></tr>
+                <tr><td>ታሪክ (History)</td><td>25</td><td>60</td><td>85</td></tr>
+                <tr><td>ግብርና (Agriculture)</td><td>28</td><td>59</td><td>87</td></tr>
+                <tr><td>ሲቪክስ (Civics)</td><td>29</td><td>61</td><td>90</td></tr>
+            </table>
+        </div>
+    </div>
+
+    <!-- 5 ቀናት -->
+    <div class="card">
+        <h3>የጥሪ መዝገብ (Attendance)</h3>
+        <div class="table-container">
+            <table>
+                <tr><th>ቀን</th><th>ሁኔታ</th></tr>
+                <tr><td>ሰኞ (Monday)</td><td style="color:green; font-weight:bold;">ተገኝቷል</td></tr>
+                <tr><td>ማክሰኞ (Tuesday)</td><td style="color:red; font-weight:bold;">ቀርቷል</td></tr>
+                <tr><td>ረቡዕ (Wednesday)</td><td style="color:green; font-weight:bold;">ተገኝቷል</td></tr>
+                <tr><td>ሐሙስ (Thursday)</td><td style="color:green; font-weight:bold;">ተገኝቷል</td></tr>
+                <tr><td>አርብ (Friday)</td><td style="color:green; font-weight:bold;">ተገኝቷል</td></tr>
+            </table>
+        </div>
+    </div>
+
+    <!-- የቀጥታ መልእክት መለዋወጫ -->
+    <div class="card">
+        <h3>ከአስተማሪ ጋር ውይይት</h3>
+        <div class="chat-area" id="chatArea"></div>
+        <div class="chat-input">
+            <input type="text" id="msgInput" placeholder="መልእክት ይጻፉ...">
+            <button onclick="sendMsg()">ላክ</button>
+        </div>
+    </div>
+
+</body>
+</html>
